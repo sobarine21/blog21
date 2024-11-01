@@ -1,87 +1,35 @@
 import streamlit as st
-import pandas as pd
+from datetime import datetime
 
-# Initialize session state for storing user profiles and matches
-if 'profiles' not in st.session_state:
-    st.session_state['profiles'] = []
+# Temporary in-memory storage for posts (will reset each time app restarts)
+if 'posts' not in st.session_state:
+    st.session_state['posts'] = []
 
-if 'current_user' not in st.session_state:
-    st.session_state['current_user'] = None
+# App title and description
+st.title("Anonymous Sharing Platform")
+st.write("Share your secrets, confessions, or accomplishments anonymously in a supportive community.")
 
-# Title
-st.title("Skill-Swap Platform for Professionals")
-
-# Sidebar for user profile creation
-with st.sidebar:
-    st.header("Create Your Profile")
-    name = st.text_input("Name")
-    skills_offered = st.text_area("Skills You Offer (comma-separated)")
-    skills_needed = st.text_area("Skills You're Looking For (comma-separated)")
-    submit = st.button("Create Profile")
-
-    # Adding user to profile list
-    if submit:
-        if name and skills_offered and skills_needed:
-            profile = {
-                "Name": name,
-                "Skills Offered": [skill.strip().lower() for skill in skills_offered.split(',')],
-                "Skills Needed": [skill.strip().lower() for skill in skills_needed.split(',')]
-            }
-            st.session_state['profiles'].append(profile)
-            st.session_state['current_user'] = profile
-            st.success(f"Profile for {name} created!")
-        else:
-            st.error("Please fill in all fields.")
-
-# Main Page for Skill Matching and Messaging
-st.subheader("Find Your Skill Match")
-
-# Display current user profile
-current_user = st.session_state.get('current_user')
-if current_user:
-    st.write("### Your Profile")
-    st.write(f"**Name**: {current_user['Name']}")
-    st.write(f"**Skills Offered**: {', '.join(current_user['Skills Offered'])}")
-    st.write(f"**Skills Needed**: {', '.join(current_user['Skills Needed'])}")
-
-    # Find matches based on skills
-    st.write("### Available Matches")
-    matches = []
-    for profile in st.session_state['profiles']:
-        if profile != current_user:
-            # Check if this user has needed skills
-            if any(skill in profile['Skills Offered'] for skill in current_user['Skills Needed']):
-                matches.append(profile)
-    
-    if matches:
-        for match in matches:
-            st.write(f"**{match['Name']}** offers **{', '.join(match['Skills Offered'])}**")
-            st.write(f"Skills they are looking for: {', '.join(match['Skills Needed'])}")
-            if st.button(f"Connect with {match['Name']}"):
-                st.write(f"You connected with {match['Name']}!")
+# Section for posting a new message
+st.subheader("Share something anonymously")
+user_input = st.text_area("What's on your mind? (secrets, confessions, or accomplishments)", "")
+if st.button("Post"):
+    if user_input.strip():
+        # Add the post with a timestamp to the temporary session state
+        st.session_state['posts'].append({
+            "text": user_input.strip(),
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        })
+        st.success("Your post has been shared anonymously!")
+        st.experimental_rerun()  # Refresh the page to show the new post
     else:
-        st.write("No matches found for your skills at the moment.")
+        st.error("Please write something before posting.")
 
+# Display all posts
+st.subheader("Anonymous Posts")
+if st.session_state['posts']:
+    for post in reversed(st.session_state['posts']):  # Display latest posts first
+        st.write("**Posted at:**", post["timestamp"])
+        st.write(post["text"])
+        st.write("---")
 else:
-    st.write("Please create a profile to find skill matches.")
-
-# Mock Chat and Schedule
-st.subheader("Messaging and Scheduling")
-
-if current_user:
-    chat_user = st.selectbox("Select a user to chat with", [profile["Name"] for profile in st.session_state['profiles'] if profile != current_user])
-    if chat_user:
-        st.write(f"Chat with {chat_user}")
-        message = st.text_input("Your Message")
-        send = st.button("Send")
-        if send:
-            st.write(f"Message to {chat_user}: {message}")
-    
-    st.write("### Schedule a Session")
-    session_date = st.date_input("Select a date")
-    session_time = st.time_input("Select a time")
-    confirm_session = st.button("Confirm Session")
-    if confirm_session:
-        st.success(f"Session scheduled on {session_date} at {session_time}!")
-else:
-    st.write("Please create a profile to start messaging and scheduling.")
+    st.write("No posts yet. Be the first to share something!")
