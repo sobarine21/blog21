@@ -1,5 +1,5 @@
 import streamlit as st
-import fitz  # PyMuPDF
+import pymupdf as fitz  # PyMuPDF
 from gtts import gTTS
 from io import BytesIO
 
@@ -29,8 +29,12 @@ uploaded_pdf = st.file_uploader("Choose a PDF file", type="pdf")
 if uploaded_pdf is not None:
     # Extract text from PDF
     with st.spinner("Extracting text from PDF..."):
-        pdf_text = extract_text_from_pdf(uploaded_pdf)
-    
+        try:
+            pdf_text = extract_text_from_pdf(uploaded_pdf)
+        except Exception as e:
+            st.error(f"Error extracting text from PDF: {e}")
+            pdf_text = None
+
     # Display extracted text preview
     if pdf_text:
         st.write("**Preview of Extracted Text:**")
@@ -38,15 +42,20 @@ if uploaded_pdf is not None:
 
         # Convert to speech
         with st.spinner("Converting text to audio..."):
-            audio_data = text_to_speech(pdf_text)
+            try:
+                audio_data = text_to_speech(pdf_text)
+            except Exception as e:
+                st.error(f"Error during text-to-speech conversion: {e}")
+                audio_data = None
 
-        # Provide audio download
-        st.audio(audio_data, format="audio/mp3")
-        st.download_button(
-            label="Download Podcast",
-            data=audio_data,
-            file_name="podcast.mp3",
-            mime="audio/mp3"
-        )
+        if audio_data:
+            # Provide audio playback and download options
+            st.audio(audio_data, format="audio/mp3")
+            st.download_button(
+                label="Download Podcast",
+                data=audio_data,
+                file_name="podcast.mp3",
+                mime="audio/mp3"
+            )
     else:
         st.error("No text found in the PDF file. Please try another file.")
