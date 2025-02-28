@@ -2,8 +2,6 @@ import streamlit as st
 import pymupdf as fitz  # PyMuPDF
 from gtts import gTTS
 from io import BytesIO
-import time
-import concurrent.futures
 
 # Function to extract text from PDF file
 def extract_text_from_pdf(pdf_file):
@@ -14,7 +12,7 @@ def extract_text_from_pdf(pdf_file):
         page = doc.load_page(page_num)
         pdf_text += page.get_text()
         # Provide feedback for each page processed
-        yield f"Processing page {page_num + 1} of {total_pages}..."
+        yield page_num + 1, total_pages  # page_num starts at 0, so add 1 for display
     return pdf_text
 
 # Function to convert text to speech
@@ -42,11 +40,15 @@ if uploaded_pdf is not None:
             text_generator = extract_text_from_pdf(uploaded_pdf)
             pdf_text = ""
             page_count = 0
-            for status in text_generator:
+            total_pages = 1  # Default to 1 page if file is empty (avoid division by 0)
+            for page_num, total_pages in text_generator:
                 page_count += 1
-                pdf_text += status
-                progress_bar.progress(page_count / 100)  # Update the progress
-                status_text.text(status)  # Display progress message
+                pdf_text += f"Page {page_num} processed.\n"  # Optional debug log
+                # Update progress bar proportionally
+                progress_bar.progress(page_count / total_pages)
+                status_text.text(f"Processing page {page_num} of {total_pages}...")
+            if not pdf_text:
+                raise Exception("No text found in the PDF.")
             st.success("Text extraction complete.")
         except Exception as e:
             st.error(f"Error extracting text from PDF: {e}")
