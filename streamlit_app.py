@@ -2,14 +2,19 @@ import streamlit as st
 import pymupdf as fitz  # PyMuPDF
 from gtts import gTTS
 from io import BytesIO
+import time
+import concurrent.futures
 
-# Function to extract text from a PDF file
+# Function to extract text from PDF file
 def extract_text_from_pdf(pdf_file):
     pdf_text = ""
     doc = fitz.open(stream=pdf_file.read(), filetype="pdf")
-    for page_num in range(doc.page_count):
+    total_pages = doc.page_count
+    for page_num in range(total_pages):
         page = doc.load_page(page_num)
         pdf_text += page.get_text()
+        # Provide feedback for each page processed
+        yield f"Processing page {page_num + 1} of {total_pages}..."
     return pdf_text
 
 # Function to convert text to speech
@@ -27,20 +32,32 @@ st.write("Upload a PDF file, and this app will generate an audio version (podcas
 uploaded_pdf = st.file_uploader("Choose a PDF file", type="pdf")
 
 if uploaded_pdf is not None:
-    # Extract text from PDF
+    # Create a progress bar for file processing
+    progress_bar = st.progress(0)
+    status_text = st.empty()
+    
+    # Start extracting text
     with st.spinner("Extracting text from PDF..."):
         try:
-            pdf_text = extract_text_from_pdf(uploaded_pdf)
+            text_generator = extract_text_from_pdf(uploaded_pdf)
+            pdf_text = ""
+            page_count = 0
+            for status in text_generator:
+                page_count += 1
+                pdf_text += status
+                progress_bar.progress(page_count / 100)  # Update the progress
+                status_text.text(status)  # Display progress message
+            st.success("Text extraction complete.")
         except Exception as e:
             st.error(f"Error extracting text from PDF: {e}")
             pdf_text = None
-
-    # Display extracted text preview
+    
+    # If text extraction successful, convert text to speech
     if pdf_text:
         st.write("**Preview of Extracted Text:**")
         st.write(pdf_text[:500] + "...")  # Show only the first 500 characters
 
-        # Convert to speech
+        # Convert to speech and show a progress bar for this task
         with st.spinner("Converting text to audio..."):
             try:
                 audio_data = text_to_speech(pdf_text)
@@ -57,5 +74,6 @@ if uploaded_pdf is not None:
                 file_name="podcast.mp3",
                 mime="audio/mp3"
             )
+
     else:
         st.error("No text found in the PDF file. Please try another file.")
